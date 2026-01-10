@@ -1,0 +1,27 @@
+{
+  "name": "bulk-image-ai",
+  "version": "1.0.0",
+  "description": "Bulk image editing and enhancement using Gemini Pro 3 API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "image",
+    "ai",
+    "gemini",
+    "bulk",
+    "enhancement"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/genai": "^0.3.0",
+    "archiver": "^7.0.1",
+    "axios": "^1.13.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1"
+  }
+}
