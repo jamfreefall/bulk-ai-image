@@ -77,9 +77,14 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/outputs', express.static(outputDir)); // Serve processed images from centralized output dir
 
-// Explicit route for index.html (helpful for Vercel)
+// Root route as fallback for Vercel
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// API health check
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', isVercel });
 });
 
 // Generate unique job ID
