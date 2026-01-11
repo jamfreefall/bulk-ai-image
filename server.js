@@ -89,40 +89,6 @@ app.get('/', (req, res) => {
     }
 });
 
-// Diagnostic route
-app.get(['/api/diag', '/diag'], (req, res) => {
-    res.json({
-        isVercel,
-        cwd: process.cwd(),
-        dirname: __dirname,
-        method: req.method,
-        url: req.url,
-        path: req.path,
-        env: {
-            VERCEL: process.env.VERCEL,
-            NOW_REGION: process.env.NOW_REGION
-        },
-        outputDir,
-        outputDirExists: require('fs').existsSync(outputDir),
-        publicExists: require('fs').existsSync(path.join(__dirname, 'public')),
-        indexExists: require('fs').existsSync(path.join(__dirname, 'public', 'index.html')),
-        listing: require('fs').readdirSync(__dirname).filter(f => !f.startsWith('.'))
-    });
-});
-
-// Catch-all diagnostic handler for 404s
-app.use((req, res) => {
-    console.log(`404: ${req.method} ${req.url}`);
-    res.status(404).json({
-        error: 'Not Found',
-        message: `Express cannot find the requested resource: ${req.method} ${req.url}`,
-        path: req.path,
-        url: req.url,
-        isVercel,
-        dirname: __dirname,
-        listing: require('fs').readdirSync(__dirname).filter(f => !f.startsWith('.'))
-    });
-});
 
 // Generate unique job ID
 function generateJobId() {
@@ -525,6 +491,41 @@ if (!isVercel) {
 process.on('SIGINT', async () => {
     console.log('\n\nShutting down gracefully...');
     process.exit(0);
+});
+
+// Diagnostic route
+app.get(['/api/diag', '/diag'], (req, res) => {
+    res.json({
+        isVercel,
+        cwd: process.cwd(),
+        dirname: __dirname,
+        method: req.method,
+        url: req.url,
+        path: req.path,
+        env: {
+            VERCEL: process.env.VERCEL,
+            NOW_REGION: process.env.NOW_REGION
+        },
+        outputDir,
+        outputDirExists: require('fs').existsSync(outputDir),
+        publicExists: require('fs').existsSync(path.join(__dirname, 'public')),
+        indexExists: require('fs').existsSync(path.join(__dirname, 'public', 'index.html')),
+        listing: require('fs').readdirSync(__dirname).filter(f => !f.startsWith('.'))
+    });
+});
+
+// Final catch-all diagnostic handler for 404s
+app.use((req, res) => {
+    console.log(`404: ${req.method} ${req.url}`);
+    res.status(404).json({
+        error: 'Not Found',
+        message: `Express cannot find the requested resource: ${req.method} ${req.url}`,
+        path: req.path,
+        url: req.url,
+        isVercel,
+        dirname: __dirname,
+        listing: require('fs').readdirSync(__dirname).filter(f => !f.startsWith('.'))
+    });
 });
 
 module.exports = app;
