@@ -9,6 +9,25 @@ const GeminiProcessor = require('./lib/gemini-processor');
 const ImageRouterProcessor = require('./lib/imagerouter-processor');
 const QueueManager = require('./lib/queue-manager');
 const ZipGenerator = require('./lib/zip-generator');
+const os = require('os');
+
+// Storage configuration for Vercel compatibility
+const isVercel = process.env.VERCEL === '1';
+const storageBaseDir = isVercel ? os.tmpdir() : __dirname;
+const uploadDir = path.join(storageBaseDir, 'uploads');
+const outputDir = path.join(storageBaseDir, 'outputs');
+const tempDir = path.join(storageBaseDir, 'temp');
+
+// Ensure directories exist (synchronous for initial setup, but safe in serverless start)
+const mkdirSync = (dir) => {
+    if (!require('fs').existsSync(dir)) {
+        require('fs').mkdirSync(dir, { recursive: true });
+    }
+};
+
+mkdirSync(uploadDir);
+mkdirSync(outputDir);
+mkdirSync(tempDir);
 
 // Initialize Express app
 const app = express();
@@ -16,10 +35,8 @@ const PORT = process.env.PORT || 3000;
 
 // Initialize services
 const apiKey = process.env.GEMINI_API_KEY;
-if (!apiKey) {
-    console.error('ERROR: GEMINI_API_KEY not found in .env file');
-    console.error('Please copy .env.example to .env and add your API key');
-    process.exit(1);
+if (!apiKey && !isVercel) {
+    console.warn('WARNING: GEMINI_API_KEY not found in .env file');
 }
 
 // Store API key for creating processors per job
@@ -30,9 +47,7 @@ const queueManager = new QueueManager(maxConcurrent);
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
-    destination: async (req, file, cb) => {
-        const uploadDir = path.join(__dirname, 'uploads');
-        await fs.mkdir(uploadDir, { recursive: true });
+    destination: (req, file, cb) => {
         cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
@@ -60,7 +75,7 @@ const upload = multer({
 // Middleware
 app.use(express.json());
 app.use(express.static('public'));
-app.use('/outputs', express.static('outputs')); // Serve processed images
+app.use('/outputs', express.static(outputDir)); // Serve processed images from centralized output dir
 
 // Generate unique job ID
 function generateJobId() {
@@ -451,14 +466,18 @@ app.get('/api/stats', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-    console.log(`\n🚀 Bulk Image AI Server running on http://localhost:${PORT}`);
-    console.log(`📊 Max concurrent requests: ${maxConcurrent}`);
-    console.log(`\n✨ Ready to process images!\n`);
-});
+if (!isVercel) {
+    app.listen(PORT, () => {
+        console.log(`\n🚀 Bulk Image AI Server running on http://localhost:${PORT}`);
+        console.log(`📊 Max concurrent requests: ${maxConcurrent}`);
+        console.log(`\n✨ Ready to process images!\n`);
+    });
+}
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
     console.log('\n\nShutting down gracefully...');
     process.exit(0);
 });
+
+module.exports = app;

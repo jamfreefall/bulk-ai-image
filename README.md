@@ -125,6 +125,28 @@ Edit `.env` to customize:
 | Output Formats | PNG | PNG, JPEG, WebP |
 | Cost Estimation | ✅ | ❌ |
 
+## Deployment to Vercel
+
+This application is configured for easy deployment to Vercel.
+
+### Prerequisites
+
+- A [Vercel](https://vercel.com) account
+- The project pushed to a GitHub repository
+
+### Deployment Steps
+
+1. **Connect to Vercel**: Go to the Vercel dashboard and click "New Project".
+2. **Import Repository**: Select your `bulk-ai-image-vercel` repository.
+3. **Configure Environment Variables**: Add the following variables:
+   - `GEMINI_API_KEY`: Your Google Gemini API key
+   - `IMAGEROUTER_API_KEY`: (Optional) Your ImageRouter API key
+   - `MAX_CONCURRENT_REQUESTS`: (Optional, default: 3)
+4. **Deploy**: Click "Deploy".
+
+> [!NOTE]
+> Vercel's serverless environment is stateless. Uploaded images and processing jobs are stored in temporary memory and filesystem (`/tmp`). For large batches or persistent job tracking, a database and cloud storage (like S3) would be required.
+
 ## Technical Details
 
 - **Backend**: Node.js + Express
