@@ -12,7 +12,7 @@ const ZipGenerator = require('./lib/zip-generator');
 const os = require('os');
 
 // Storage configuration for Vercel compatibility
-const isVercel = process.env.VERCEL === '1';
+const isVercel = process.env.VERCEL === '1' || process.env.NOW_REGION;
 const storageBaseDir = isVercel ? os.tmpdir() : __dirname;
 const uploadDir = path.join(storageBaseDir, 'uploads');
 const outputDir = path.join(storageBaseDir, 'outputs');
@@ -84,7 +84,22 @@ app.get('/', (req, res) => {
 
 // API health check
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', isVercel });
+    res.json({ status: 'ok', isVercel, time: new Date().toISOString() });
+});
+
+// Diagnostic route
+app.get('/api/diag', (req, res) => {
+    res.json({
+        isVercel,
+        cwd: process.cwd(),
+        dirname: __dirname,
+        env: {
+            VERCEL: process.env.VERCEL,
+            NOW_REGION: process.env.NOW_REGION
+        },
+        staticPath: path.join(__dirname, 'public'),
+        exists: require('fs').existsSync(path.join(__dirname, 'public', 'index.html'))
+    });
 });
 
 // Generate unique job ID
