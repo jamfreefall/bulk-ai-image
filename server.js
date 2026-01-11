@@ -74,8 +74,13 @@ const upload = multer({
 
 // Middleware
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use('/outputs', express.static(outputDir)); // Serve processed images from centralized output dir
+
+// Explicit route for index.html (helpful for Vercel)
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Generate unique job ID
 function generateJobId() {
