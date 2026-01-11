@@ -74,13 +74,19 @@ const upload = multer({
 
 // Middleware
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/outputs', express.static(outputDir)); // Serve processed images from centralized output dir
 
-// Root route as fallback for Vercel
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// Only serve static files locally. Vercel handles the 'public' folder natively.
+if (!isVercel) {
+    app.use(express.static(path.join(__dirname, 'public')));
+    app.use('/outputs', express.static(outputDir));
+
+    app.get('/', (req, res) => {
+        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    });
+} else {
+    // On Vercel, we still need to serve the outputs from /tmp
+    app.use('/outputs', express.static(outputDir));
+}
 
 // API health check
 app.get('/api/health', (req, res) => {
@@ -88,17 +94,20 @@ app.get('/api/health', (req, res) => {
 });
 
 // Diagnostic route
-app.get('/api/diag', (req, res) => {
+app.get(['/api/diag', '/diag'], (req, res) => {
     res.json({
         isVercel,
         cwd: process.cwd(),
         dirname: __dirname,
+        method: req.method,
+        url: req.url,
+        path: req.path,
         env: {
             VERCEL: process.env.VERCEL,
             NOW_REGION: process.env.NOW_REGION
         },
-        staticPath: path.join(__dirname, 'public'),
-        exists: require('fs').existsSync(path.join(__dirname, 'public', 'index.html'))
+        outputDir,
+        outputDirExists: require('fs').existsSync(outputDir)
     });
 });
 

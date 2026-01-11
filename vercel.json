@@ -8,10 +8,6 @@
         {
             "source": "/outputs/(.*)",
             "destination": "/api/index.js"
-        },
-        {
-            "source": "/(.*)",
-            "destination": "/api/index.js"
         }
     ]
 }
