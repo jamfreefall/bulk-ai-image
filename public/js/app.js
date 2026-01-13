@@ -6,6 +6,7 @@ let imageRouterModels = []; // Store fetched models
 let imageRouterAllModels = []; // Store all models before filtering
 let selectedImageRouterSize = null; // Track selected size
 let selectedImageRouterQuality = 'auto'; // Track selected quality
+let selectedMode = 'image-to-image'; // Track selected mode
 
 // DOM Elements
 const uploadZone = document.getElementById('uploadZone');
@@ -115,6 +116,11 @@ function setupEventListeners() {
         radio.addEventListener('change', toggleProviderUI);
     });
 
+    // Mode selection change
+    document.querySelectorAll('input[name="mode"]').forEach(radio => {
+        radio.addEventListener('change', toggleModeUI);
+    });
+
     // Model selection change - update cost estimate and show/hide advanced settings
     document.querySelectorAll('input[name="model"]').forEach(radio => {
         radio.addEventListener('change', () => {
@@ -157,6 +163,7 @@ function toggleProviderUI() {
     }
 
     updateCostEstimate();
+    toggleModeUI(); // Update mode UI when provider changes
 }
 
 // Toggle Advanced Settings
@@ -172,6 +179,54 @@ function toggleAdvancedSettings() {
     } else {
         advancedSettings.classList.add('hidden');
     }
+}
+
+// Toggle Mode UI
+function toggleModeUI() {
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+    selectedMode = mode;
+
+    const uploadZone = document.getElementById('uploadZone');
+    const uploadCard = uploadZone.parentElement; // The upload-card div
+    const promptHint = document.getElementById('promptHint');
+    const provider = document.querySelector('input[name="provider"]:checked').value;
+
+    if (mode === 'text-to-image') {
+        // Hide upload zone for text-to-image
+        uploadZone.classList.add('hidden');
+        document.getElementById('selectedFiles').classList.add('hidden');
+
+        // Update prompt hint
+        promptHint.textContent = 'Describe the image you want to generate in detail';
+
+        // Clear selected files
+        selectedFiles = [];
+        selectedFilesContainer.innerHTML = '';
+        uploadBtn.disabled = false; // Enable button even without files
+
+        // For ImageRouter, filter models to show all
+        if (provider === 'imagerouter') {
+            applyImageRouterFilters();
+        }
+    } else {
+        // Show upload zone for image-to-image
+        uploadZone.classList.remove('hidden');
+        document.getElementById('selectedFiles').classList.remove('hidden');
+
+        // Update prompt hint
+        promptHint.textContent = 'Customize the instructions to tell the AI exactly how to process your images';
+
+        // Disable button if no files
+        uploadBtn.disabled = selectedFiles.length === 0;
+
+        // For ImageRouter, filter models to show only edit-capable
+        if (provider === 'imagerouter') {
+            applyImageRouterFilters();
+        }
+    }
+
+    // Update cost estimate when mode changes
+    updateCostEstimate();
 }
 
 // ImageRouter Model Management
@@ -228,11 +283,19 @@ function applyImageRouterFilters() {
     const freeOnly = document.getElementById('irFilterFree').checked;
     const provider = document.getElementById('irFilterProvider').value;
     const type = document.getElementById('irFilterType').value;
+    const modeRadio = document.querySelector('input[name="mode"]:checked');
+    const mode = modeRadio ? modeRadio.value : 'image-to-image';
 
     imageRouterModels = imageRouterAllModels.filter(model => {
         if (freeOnly && !model.isFree) return false;
         if (provider && model.provider !== provider) return false;
         if (type && !model.output.includes(type)) return false;
+
+        // Filter by edit capability for image-to-image mode
+        if (mode === 'image-to-image') {
+            if (!model.supported_params || !model.supported_params.edit) return false;
+        }
+
         return true;
     });
 
@@ -281,6 +344,7 @@ function renderImageRouterModels(models) {
         radio.addEventListener('change', (e) => {
             if (e.target.checked) {
                 fetchModelDetails(e.target.dataset.modelId);
+                updateCostEstimate(); // Update cost estimate when model changes
             }
         });
     });
@@ -502,21 +566,69 @@ function updateCostEstimate() {
     const costValueEl = document.getElementById('costValue');
     const costBreakdownEl = document.getElementById('costBreakdown');
 
-    if (selectedFiles.length === 0) {
+    const provider = document.querySelector('input[name="provider"]:checked').value;
+    const modeRadio = document.querySelector('input[name="mode"]:checked');
+    const mode = modeRadio ? modeRadio.value : 'image-to-image';
+
+    // For text-to-image mode, use 1 as count, otherwise use selectedFiles length
+    const imageCount = mode === 'text-to-image' ? 1 : selectedFiles.length;
+
+    if (imageCount === 0) {
         costEstimateEl.classList.add('hidden');
         return;
     }
 
-    const selectedModel = document.querySelector('input[name="model"]:checked').value;
-    const resolution = document.getElementById('imageSize').value;
-    const pricing = PRICING[selectedModel][resolution];
+    if (provider === 'gemini') {
+        // Gemini pricing
+        const selectedModel = document.querySelector('input[name="model"]:checked').value;
+        const resolution = document.getElementById('imageSize').value;
+        const pricing = PRICING[selectedModel][resolution];
 
-    const totalCost = selectedFiles.length * (pricing.input + pricing.output);
+        const totalCost = imageCount * (pricing.input + pricing.output);
 
-    costValueEl.textContent = `$${totalCost.toFixed(4)}`;
-    costBreakdownEl.textContent = `${selectedFiles.length} image${selectedFiles.length > 1 ? 's' : ''} × $${(pricing.input + pricing.output).toFixed(4)} (${PRICING[selectedModel].name}, ${resolution})`;
+        costValueEl.textContent = `$${totalCost.toFixed(4)}`;
+        costBreakdownEl.textContent = `${imageCount} image${imageCount > 1 ? 's' : ''} × $${(pricing.input + pricing.output).toFixed(4)} (${PRICING[selectedModel].name}, ${resolution})`;
 
-    costEstimateEl.classList.remove('hidden');
+        costEstimateEl.classList.remove('hidden');
+    } else if (provider === 'imagerouter') {
+        // ImageRouter pricing
+        const selectedModelRadio = document.querySelector('input[name="imageRouterModel"]:checked');
+        if (!selectedModelRadio) {
+            costEstimateEl.classList.add('hidden');
+            return;
+        }
+
+        const selectedModelId = selectedModelRadio.value;
+        const model = imageRouterModels.find(m => m.id === selectedModelId);
+
+        if (!model) {
+            costEstimateEl.classList.add('hidden');
+            return;
+        }
+
+        if (model.isFree) {
+            costValueEl.textContent = 'FREE';
+            costBreakdownEl.textContent = `${imageCount} image${imageCount > 1 ? 's' : ''} × $0.00 (${model.name})`;
+            costEstimateEl.classList.remove('hidden');
+        } else {
+            // Use average pricing if available, otherwise use min
+            const pricePerImage = model.pricing.average || model.pricing.min;
+            const totalCost = imageCount * pricePerImage;
+
+            costValueEl.textContent = `$${totalCost.toFixed(4)}`;
+
+            // Show price range if min and max differ
+            if (model.pricing.min !== model.pricing.max) {
+                costBreakdownEl.textContent = `${imageCount} image${imageCount > 1 ? 's' : ''} × $${pricePerImage.toFixed(4)} (${model.name}, estimated)`;
+            } else {
+                costBreakdownEl.textContent = `${imageCount} image${imageCount > 1 ? 's' : ''} × $${pricePerImage.toFixed(4)} (${model.name})`;
+            }
+
+            costEstimateEl.classList.remove('hidden');
+        }
+    } else {
+        costEstimateEl.classList.add('hidden');
+    }
 }
 
 // File Selection Handlers
@@ -566,7 +678,13 @@ function addFiles(files) {
 
     // Update UI
     renderSelectedFiles();
-    uploadBtn.disabled = selectedFiles.length === 0;
+
+    // Only disable button if in image-to-image mode and no files
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+    if (mode === 'image-to-image') {
+        uploadBtn.disabled = selectedFiles.length === 0;
+    }
+
     updateCostEstimate();
 
     showToast(`${imageFiles.length} image(s) added`, 'success');
@@ -596,7 +714,13 @@ function renderSelectedFiles() {
 
 // Upload Handler
 async function handleUpload() {
-    if (selectedFiles.length === 0) return;
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+
+    // Only check for files in image-to-image mode
+    if (mode === 'image-to-image' && selectedFiles.length === 0) {
+        showToast('Please select at least one image', 'error');
+        return;
+    }
 
     // Validate API key first
     if (!validateApiKey()) {
@@ -636,6 +760,9 @@ async function handleUpload() {
             selectedModel = document.querySelector('input[name="model"]:checked').value;
         }
         formData.append('model', selectedModel);
+
+        // Add mode to form data
+        formData.append('mode', selectedMode);
 
         // Add advanced settings if Gemini 3 Pro is selected
         if (provider === 'gemini' && selectedModel === 'gemini-3-pro-image-preview') {
