@@ -4,9 +4,9 @@ let currentJobId = null;
 let pollingInterval = null;
 let imageRouterModels = []; // Store fetched models
 let imageRouterAllModels = []; // Store all models before filtering
-let selectedImageRouterSize = null; // Track selected size
-let selectedImageRouterQuality = 'auto'; // Track selected quality
-let selectedMode = 'image-to-image'; // Track selected mode
+let selectedImageRouterSize = null; // ImageRouter specific settings
+let selectedImageRouterQuality = 'auto';
+let selectedMode = 'image-to-image'; // Default mode
 
 // DOM Elements
 const uploadZone = document.getElementById('uploadZone');
@@ -807,10 +807,16 @@ function showProcessingSection() {
 
     // Initialize image list
     imageList.innerHTML = '';
-    selectedFiles.forEach((file, index) => {
-        const item = createImageItem(file.name, 'pending');
+
+    if (selectedFiles.length > 0) {
+        selectedFiles.forEach((file, index) => {
+            const item = createImageItem(file.name, 'pending');
+            imageList.appendChild(item);
+        });
+    } else if (selectedMode === 'text-to-image') {
+        const item = createImageItem('Generating from prompt...', 'pending');
         imageList.appendChild(item);
-    });
+    }
 }
 
 function createImageItem(name, status) {
@@ -1102,10 +1108,10 @@ function resetApp() {
     resultsSection.classList.add('hidden');
 
     selectedFilesContainer.innerHTML = '';
-    uploadBtn.disabled = true;
     fileInput.value = '';
     promptInput.value = 'Enhance this image: improve quality, adjust colors and lighting, sharpen details, and make it look professional and polished.';
 
+    toggleModeUI(); // Restore UI state based on current mode
     showToast('Ready for new batch', 'success');
 }
 

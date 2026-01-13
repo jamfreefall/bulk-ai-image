@@ -96,7 +96,7 @@ function generateJobId() {
 }
 
 // Process images for a job
-async function processJob(jobId, apiKey, customPrompt, selectedModel, aspectRatio, imageSize, provider = 'gemini', imageRouterApiKey = null, irQuality = 'auto', irSize = 'auto') {
+async function processJob(jobId, apiKey, customPrompt, selectedModel, aspectRatio, imageSize, provider = 'gemini', imageRouterApiKey = null, irQuality = 'auto', irSize = 'auto', mode = 'image-to-image') {
     console.log(`\n=== Starting processJob ===`);
     console.log(`Job ID: ${jobId}`);
     console.log(`Provider: ${provider}`);
@@ -142,6 +142,47 @@ async function processJob(jobId, apiKey, customPrompt, selectedModel, aspectRati
         }
         console.log('Processor created successfully');
 
+        // Handle text-to-image if no images provided
+        if (job.images.length === 0 && mode === 'text-to-image') {
+            console.log('Text-to-image mode with no source images. Generating single image...');
+
+            // Add a placeholder image entry to the job so UI shows something
+            const placeholderIndex = 0;
+            job.images.push({
+                path: 'Text Prompt',
+                status: 'pending',
+                outputPath: null,
+                error: null
+            });
+            job.progress.total = 1;
+            job.progress.pending = 1;
+
+            try {
+                queueManager.updateImageStatus(jobId, placeholderIndex, 'processing');
+
+                // Call with null path and the prompt
+                const result = await processor.processImageWithRetry(null, 2, customPrompt);
+                console.log(`Generation result:`, result);
+
+                if (result.success) {
+                    queueManager.updateImageStatus(jobId, placeholderIndex, 'completed', {
+                        outputPath: result.outputPath,
+                        analysis: result.analysis
+                    });
+                } else {
+                    queueManager.updateImageStatus(jobId, placeholderIndex, 'failed', {
+                        error: result.error
+                    });
+                }
+            } catch (error) {
+                console.error(`Exception in text-to-image generation:`, error);
+                queueManager.updateImageStatus(jobId, placeholderIndex, 'failed', {
+                    error: error.message
+                });
+            }
+            return; // Finished text-to-image job
+        }
+
         // Process each image
         for (let i = 0; i < job.images.length; i++) {
             const image = job.images[i];
@@ -150,7 +191,7 @@ async function processJob(jobId, apiKey, customPrompt, selectedModel, aspectRati
             try {
                 queueManager.updateImageStatus(jobId, i, 'processing');
 
-                const result = await processor.processImageWithRetry(image.path);
+                const result = await processor.processImageWithRetry(image.path, 2, customPrompt);
                 console.log(`Processing result for image ${i}:`, result);
 
                 if (result.success) {
@@ -215,8 +256,10 @@ queueManager.on('jobComplete', async (jobId) => {
  */
 app.post('/api/upload', upload.array('images', 20), async (req, res) => {
     try {
-        if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ error: 'No files uploaded' });
+        const mode = req.body.mode || 'image-to-image';
+
+        if (mode === 'image-to-image' && (!req.files || req.files.length === 0)) {
+            return res.status(400).json({ error: 'No files uploaded for image-to-image mode' });
         }
 
         // Get provider selection (default to gemini for backward compatibility)
@@ -256,7 +299,7 @@ app.post('/api/upload', upload.array('images', 20), async (req, res) => {
         const job = queueManager.createJob(jobId, imagePaths);
 
         // Start processing with appropriate parameters based on provider
-        processJob(jobId, apiKey, customPrompt, selectedModel, aspectRatio, imageSize, provider, imageRouterApiKey, irQuality, irSize);
+        processJob(jobId, apiKey, customPrompt, selectedModel, aspectRatio, imageSize, provider, imageRouterApiKey, irQuality, irSize, mode);
 
         res.json({
             success: true,

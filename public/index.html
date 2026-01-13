@@ -26,6 +26,33 @@
     <!-- Main Content -->
     <main class="main-content">
       <section class="upload-section" id="uploadSection">
+        <!-- Generation Mode Selection -->
+        <div class="model-selection" id="modeSelection">
+          <label class="model-label">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>Generation Mode</span>
+          </label>
+          <div class="model-options">
+            <div class="model-option">
+              <input type="radio" id="modeImageToImage" name="mode" value="image-to-image" checked>
+              <label for="modeImageToImage">
+                <strong>Image to Image</strong>
+                <span class="model-desc">Edit & enhance existing images</span>
+              </label>
+            </div>
+            <div class="model-option">
+              <input type="radio" id="modeTextToImage" name="mode" value="text-to-image">
+              <label for="modeTextToImage">
+                <strong>Text to Image</strong>
+                <span class="model-desc">Generate images from text prompts</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
         <div class="upload-card">
 
           <!-- Provider Selection -->
@@ -117,32 +144,6 @@
           </div>
         </div>
 
-        <!-- Generation Mode Selection -->
-        <div class="model-selection" id="modeSelection">
-          <label class="model-label">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-            <span>Generation Mode</span>
-          </label>
-          <div class="model-options">
-            <div class="model-option">
-              <input type="radio" id="modeImageToImage" name="mode" value="image-to-image" checked>
-              <label for="modeImageToImage">
-                <strong>Image to Image</strong>
-                <span class="model-desc">Edit & enhance existing images</span>
-              </label>
-            </div>
-            <div class="model-option">
-              <input type="radio" id="modeTextToImage" name="mode" value="text-to-image">
-              <label for="modeTextToImage">
-                <strong>Text to Image</strong>
-                <span class="model-desc">Generate images from text prompts</span>
-              </label>
-            </div>
-          </div>
-        </div>
 
         <!-- Gemini Model Selection -->
         <div class="model-selection" id="geminiModelSelection">
@@ -336,8 +337,14 @@
       </div>
 
       <div class="results-summary" id="resultsSummary"></div>
-
-      <button class="btn btn-secondary" id="newBatchBtn">
+    </div>
+    <div class="results-footer">
+      <button class="btn btn-primary btn-lg" id="newBatchBtn">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6"></path>
+          <path d="M1 20v-6h6"></path>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
         <span>Process New Batch</span>
       </button>
     </div>
